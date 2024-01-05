@@ -8,6 +8,7 @@
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <sys/wait.h>
+#include <arpa/inet.h>
 #include <signal.h>
 #include <netdb.h>
 #include <time.h> 
