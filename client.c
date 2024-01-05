@@ -25,6 +25,9 @@ int main(int argc,char* argv[]){
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 	char s[INET6_ADDRSTRLEN];
+	char buff[100];
+	printf("Enter the message needs to be send to server:");
+	scanf("%s",buff);
 
 	if(argc != 2){
 		fprintf(stderr,"usage: client hostname\n");
@@ -63,14 +66,8 @@ int main(int argc,char* argv[]){
 	printf("client: connecting to %s\n", s);
 	
 	freeaddrinfo(servinfo);
+		
 	
-	time_t rawtime=0; 
-	rawtime=time (NULL); 
-	char buff[100];
-	char buff1[100];
-	strncpy(buff1,ctime(&rawtime),strlen(ctime(&rawtime))-1);
-	sprintf(buff,"%s hi",buff1);
-
 	if (send(sockfd,buff,sizeof(buff),0) == -1){ 
 		perror("send");
 		exit(1); 
@@ -81,8 +78,13 @@ int main(int argc,char* argv[]){
 		exit(1); 
 	}  
 	
-	printf("%s\n",buff);
-	printf("socket is closed\n"); 
+	// time of received the message from the server
+	time_t rawtime=0; 
+	rawtime=time (NULL); 
+	char buff1[MAX];
+	strncpy(buff1,ctime(&rawtime),strlen(ctime(&rawtime))-1);
+	sprintf(buff,"%s %s",buff,buff1);
+	printf("The final received message with the time stamp is \n%s\n",buff); 
 	close(sockfd); 
 	return 0;
 }

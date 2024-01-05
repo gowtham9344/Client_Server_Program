@@ -94,11 +94,11 @@ int main(){
 		sin_size = sizeof(their_addr); 
 		connfd=accept(sockfd,(SA*)&their_addr,&sin_size); 
 		if(connfd == -1){ 
-			perror("accept");
+			perror("\naccept error\n");
 			continue;
 		} 
 		inet_ntop(their_addr.ss_family,get_in_addr((struct sockaddr *)&their_addr),s, sizeof(s));
-		printf("server: got connection from %s\n", s);
+		printf("\nserver: got connection from %s\n", s);
   
 		int fk=fork(); 
 		if (fk==0){ 
@@ -108,19 +108,22 @@ int main(){
 				printf("msg not received\n"); 
 				exit(0); 
 			} 
-			int w;
-			printf("wait for sometime and enter any number:");
-			scanf("%d",&w);
+
+			//received timestamp of the message
 			time_t rawtime=0; 
-			rawtime=time(NULL); 
+			rawtime=time(NULL);
 			char buff1[100];
+
+			// taking only the time without new line character
 			strncpy(buff1,ctime(&rawtime),strlen(ctime(&rawtime))-1);
-			sprintf(buff,"%s %s",buff,buff1);		 
-			if (send(connfd,buff,sizeof(buff),0) == -1){ 
+			int w;
+			printf("wait for sometime and enter any number for time difference delay:");
+			scanf("%d",&w); 
+			sprintf(buff1,"%s %s",buff1,buff);		 
+			if (send(connfd,buff1,sizeof(buff1),0) == -1){ 
 				printf("not send\n"); 
 				exit(0); 
 			} 
-			printf("msg received\n");
 			close(connfd); 
 			exit(0);
 		} 
