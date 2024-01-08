@@ -144,16 +144,9 @@ void message_handler(int connfd){
 	} 
 }
 
-
-int main(){ 
-	int sockfd,connfd; 
+// reap all dead processes that are created as child processes
+void signal_handler(){
 	struct sigaction sa;
-	
-
-	//server creation .
-	sockfd = server_creation();
-
-	// reap all dead processes that are created as child processes
 	sa.sa_handler = sigchld_handler; 
 	sigemptyset(&sa.sa_mask);
 	sa.sa_flags = SA_RESTART;
@@ -161,6 +154,17 @@ int main(){
 		perror("sigaction");
 		exit(1);
 	}
+}
+
+
+
+int main(){ 
+	int sockfd,connfd; 
+	
+	//server creation .
+	sockfd = server_creation();
+	
+	signal_handler();	
 
 	printf("server: waiting for connections...\n");
 	 
