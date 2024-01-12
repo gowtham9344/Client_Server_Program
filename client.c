@@ -10,7 +10,7 @@
 #include <sys/socket.h> 
 #include <sys/types.h> 
  
-#define PORT "3490" 
+#define PORT "8000" 
 #define MAX 100
 #define SA struct sockaddr
 
@@ -28,7 +28,9 @@ void *get_in_addr(struct sockaddr *sa){
 int client_creation(int argc, char* argv[]){
 	int sockfd;
 	struct addrinfo hints,*servinfo,*p;
+	char s[INET6_ADDRSTRLEN];
 	int rv;
+	
 
 	memset(&hints,0,sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
@@ -68,15 +70,15 @@ int client_creation(int argc, char* argv[]){
 	return sockfd;
 }
 
-void message_handler(int sockfd){
+void message_handler(int sockfd,char buff[]){
 	// sending message to the server.
-	if (send(sockfd,buff,sizeof(buff),0) == -1){ 
+	if (send(sockfd,buff,100,0) == -1){ 
 		perror("send");
 		exit(1); 
 	} 
-
+	
 	//receving message from the server.
-	if(recv(sockfd,buff,sizeof(buff),0) == -1){ 
+	if(recv(sockfd,buff,100,0) == -1){ 
 		perror("recv");
 		exit(1); 
 	}  
@@ -103,8 +105,10 @@ int main(int argc,char* argv[]){
 	}
 	
 	sockfd = client_creation(argc,argv);
+	
+	
 		
-	message_handler(sockfd);
+	message_handler(sockfd,buff);
 	
 	close(sockfd);
 	return 0;

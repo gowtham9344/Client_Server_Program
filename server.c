@@ -15,16 +15,8 @@
 
 #define SA struct sockaddr 
 #define BACKLOG 10 
-#define PORT "3490" 
+#define PORT "8000" 
 
-
-
-//it helps us to handle all the dead process which was created with the fork system call.
-void sigchld_handler(int s){
-	int saved_errno = errno;
-	while(waitpid(-1,NULL,WNOHANG) > 0);
-	errno = saved_errno;
-}
 
 
 // give IPV4 or IPV6  based on the family set in the sa
@@ -77,15 +69,8 @@ int server_creation(){
 			perror("server: bind");
 			continue;
 		}
-		break;
-	}
-
-	if(p == NULL){
-		fprintf(stderr, "server: failed to bind\n");
-		exit(1);	
 	}
 	
-
 	// server will be listening with maximum simultaneos connections of BACKLOG
 	if(listen(sockfd,BACKLOG) == -1){ 
 		perror("listen");
@@ -144,27 +129,14 @@ void message_handler(int connfd){
 	} 
 }
 
-// reap all dead processes that are created as child processes
-void signal_handler(){
-	struct sigaction sa;
-	sa.sa_handler = sigchld_handler; 
-	sigemptyset(&sa.sa_mask);
-	sa.sa_flags = SA_RESTART;
-	if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-		perror("sigaction");
-		exit(1);
-	}
-}
-
-
 
 int main(){ 
 	int sockfd,connfd; 
+	struct sigaction sa;
 	
+
 	//server creation .
 	sockfd = server_creation();
-	
-	signal_handler();	
 
 	printf("server: waiting for connections...\n");
 	 
@@ -176,18 +148,7 @@ int main(){
 			continue;
 		}
 
-		// fork is used for concurrent server.
-		// here fork is used to create child process to handle single client connection because if two clients needs to 
-		// connect to the server simultaneously if we do the client acceptence without fork if some client got connected then until 
-		// the client releases the server no one can able to connect to the server.
-		// to avoid this , used fork, that creates child process to handle the connection.
-		int fk=fork(); 
-		if (fk==0){ 
-			close(sockfd);
-			message_handler(connfd);			
-			close(connfd); 
-			exit(0);
-		} 
+		message_handler(connfd);			
 		close(connfd);  
 	} 
 	close(sockfd); 
