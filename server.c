@@ -9,15 +9,14 @@
 #include <sys/socket.h>
 #include <sys/wait.h>
 #include <arpa/inet.h>
-#include <signal.h>
 #include <netdb.h>
 #include <time.h> 
+#include <poll.h>
 
 #define SA struct sockaddr 
-#define BACKLOG 10 
+#define BACKLOG 0 
 #define PORT "8000" 
-
-
+#define NUM_FDS 5
 
 // give IPV4 or IPV6  based on the family set in the sa
 void *get_in_addr(struct sockaddr *sa){
@@ -80,8 +79,7 @@ int server_creation(){
 }
 
 //connection establishment with the client
-//return connection descriptor to the calling function
-int connection_accepting(int sockfd){
+void connection_accepting(int sockfd,struct pollfd *pollfds , int* maxfds, int* numfds){
 	int connfd;
 	struct sockaddr_storage their_addr;
 	char s[INET6_ADDRSTRLEN];
@@ -90,29 +88,43 @@ int connection_accepting(int sockfd){
 	sin_size = sizeof(their_addr); 
 	connfd=accept(sockfd,(SA*)&their_addr,&sin_size); 
 	if(connfd == -1){ 
-		perror("\naccept error\n");
-		return -1;
+		perror("accept");
+		exit(1);
 	} 
+	
+	if(*numfds == *maxfds){
+		if((pollfds = realloc(pollfds,(*maxfds + NUM_FDS) * sizeof(struct pollfd))) == NULL){
+			perror("realloc");
+			exit(1);
+		}
+		*maxfds += NUM_FDS;
+	}
+	(*numfds)++;
+					
+	(pollfds + *numfds - 1) -> fd = connfd;
+	(pollfds + *numfds - 1) -> events = POLLIN;
+	(pollfds + *numfds - 1) -> revents = 0;
+	
 	//printing the client name
 	inet_ntop(their_addr.ss_family,get_in_addr((struct sockaddr *)&their_addr),s, sizeof(s));
 	printf("\nserver: got connection from %s\n", s);
 	
-	return connfd;
 }
 
-void message_handler(int connfd){
+void message_handler(struct pollfd *pollfds){
 	char buff[100];
 	int n;
 	//receving data from the client
-	if((n = recv(connfd,buff,sizeof(buff),0)) == -1){
+	if((n = recv(pollfds->fd,buff,sizeof(buff),0)) == -1){
 		printf("msg not received\n"); 
-		exit(0); 
+		exit(1); 
 	} 
 	buff[n] = '\0';
 	//received timestamp of the message
 	time_t rawtime=0; 
 	rawtime=time(NULL);
 	char buff1[100];
+	char buff2[200];
 			
 	// taking only the time without new line character
 	strncpy(buff1,ctime(&rawtime),strlen(ctime(&rawtime))-1);
@@ -120,36 +132,65 @@ void message_handler(int connfd){
 	int w;
 	printf("wait for sometime and enter any number for time difference delay:");
 	scanf("%d",&w); 
-	sprintf(buff1,"%s %s",buff1,buff);
+	sprintf(buff2,"%s %s",buff1,buff);
 	
 	//sending data to the client		 
-	if (send(connfd,buff1,sizeof(buff1),0) == -1){ 
+	if (send(pollfds->fd,buff2,sizeof(buff2),0) == -1){ 
 		printf("not send\n"); 
-		exit(0); 
+		exit(1); 
 	} 
+	
+	close(pollfds->fd); // connection is closed for that client
+	pollfds->fd *= -1; // make it negative to ignore it in the future
 }
+
+
 
 
 int main(){ 
 	int sockfd,connfd; 
-	struct sigaction sa;
+	nfds_t nfds = 0;
+	struct pollfd *pollfds;
+	int maxfds = 0;
+	int numfds = 0;
 	
-
 	//server creation .
 	sockfd = server_creation();
+	
+	if((pollfds = malloc(NUM_FDS*sizeof(struct pollfd))) == NULL){
+		perror("malloc");
+		exit(1);
+	}
+	maxfds = NUM_FDS;
+	
+	pollfds -> fd = sockfd;
+	pollfds -> events = POLLIN;
+	pollfds -> revents = 0;
+	numfds = 1;
 
 	printf("server: waiting for connections...\n");
 	 
 	while(1){ 
-		
-		connfd = connection_accepting(sockfd);
-			
-		if(connfd == -1){
-			continue;
+	
+		nfds = numfds;
+		if(poll(pollfds,nfds,-1) == -1){
+			perror("poll");
+			exit(1);
 		}
-
-		message_handler(connfd);			
-		close(connfd);  
+		
+		for(int fd = 0; fd < nfds;fd++){
+			if((pollfds + fd)->fd <= 0)
+				continue;
+			
+			if(((pollfds + fd)->revents & POLLIN) == POLLIN){
+				if((pollfds + fd)->fd == sockfd){
+					connection_accepting(sockfd,pollfds,&maxfds,&numfds);
+				}
+				else{
+					message_handler(pollfds+fd);
+				}
+			}
+		}
 	} 
 	close(sockfd); 
 	return 0;

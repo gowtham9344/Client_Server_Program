@@ -43,10 +43,13 @@ int client_creation(int argc, char* argv[]){
 
 	for(p = servinfo; p!= NULL; p=p->ai_next){
 		sockfd=socket(p->ai_family,p->ai_socktype,p->ai_protocol);
+		
 		if(sockfd==-1){ 
 			perror("server: socket\n"); 
 			continue; 
 		}
+		
+		
 		
 		// connect will help us to connect to the server with the addr given in arguments.
 		if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
