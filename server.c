@@ -78,38 +78,40 @@ int server_creation(){
 	return sockfd;
 }
 
-//connection establishment with the client
-void connection_accepting(int sockfd,struct pollfd *pollfds , int* maxfds, int* numfds){
-	int connfd;
-	struct sockaddr_storage their_addr;
-	char s[INET6_ADDRSTRLEN];
-	socklen_t sin_size;
-	
-	sin_size = sizeof(their_addr); 
-	connfd=accept(sockfd,(SA*)&their_addr,&sin_size); 
-	if(connfd == -1){ 
-		perror("accept");
-		exit(1);
-	} 
-	
-	if(*numfds == *maxfds){
-		if((pollfds = realloc(pollfds,(*maxfds + NUM_FDS) * sizeof(struct pollfd))) == NULL){
-			perror("realloc");
-			exit(1);
-		}
-		*maxfds += NUM_FDS;
-	}
-	(*numfds)++;
-					
-	(pollfds + *numfds - 1) -> fd = connfd;
-	(pollfds + *numfds - 1) -> events = POLLIN;
-	(pollfds + *numfds - 1) -> revents = 0;
-	
-	//printing the client name
-	inet_ntop(their_addr.ss_family,get_in_addr((struct sockaddr *)&their_addr),s, sizeof(s));
-	printf("\nserver: got connection from %s\n", s);
-	
+// connection establishment with the client
+void connection_accepting(int sockfd, struct pollfd **pollfds, int *maxfds, int *numfds) {
+    int connfd;
+    struct sockaddr_storage their_addr;
+    char s[INET6_ADDRSTRLEN];
+    socklen_t sin_size;
+
+    sin_size = sizeof(their_addr);
+    connfd = accept(sockfd, (SA*)&their_addr, &sin_size);
+    if (connfd == -1) {
+        perror("accept");
+        exit(1);
+    }
+
+    if (*numfds == *maxfds) {
+        *pollfds = realloc(*pollfds, (*maxfds + NUM_FDS) * sizeof(struct pollfd));
+
+        if (*pollfds == NULL) {
+            perror("realloc");
+            exit(1);
+        }
+        *maxfds += NUM_FDS;
+    }
+    (*numfds)++;
+
+    ((*pollfds) + *numfds - 1)->fd = connfd;
+    ((*pollfds) + *numfds - 1)->events = POLLIN;
+    ((*pollfds) + *numfds - 1)->revents = 0;
+
+    // Printing the client name
+    inet_ntop(their_addr.ss_family, get_in_addr((struct sockaddr *)&their_addr), s, sizeof(s));
+    printf("\nserver: got connection from %s\n", s);
 }
+
 
 void message_handler(struct pollfd *pollfds){
 	char buff[100];
@@ -184,7 +186,7 @@ int main(){
 			
 			if(((pollfds + fd)->revents & POLLIN) == POLLIN){
 				if((pollfds + fd)->fd == sockfd){
-					connection_accepting(sockfd,pollfds,&maxfds,&numfds);
+					connection_accepting(sockfd,&pollfds,&maxfds,&numfds);
 				}
 				else{
 					message_handler(pollfds+fd);
